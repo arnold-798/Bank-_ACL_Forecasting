@@ -106,7 +106,7 @@ def manual_extract():
 
 
 
-    def extract_xlsx():
+    def extract_xlsx(directory):
     
         def total_pages(pdf):
             pdf_object = PdfFileReader(open(pdf, 'rb'))
@@ -115,7 +115,7 @@ def manual_extract():
         
         # Figure out how to manipulate the extraction formuala to export to a new path
 
-        for pdf in os.listdir():
+        for pdf in os.listdir(directory):
                file_name, file_extension = os.path.splitext(pdf)
                if file_extension == '.pdf':
                    #cmd = "pdfgrep -Pn '^(?s:(?=.*Revenue)|(?=.*Income))' " + pdf + " | awk -F\":\" '$0~\":\"{print $1}' | tr '\n' ','"
@@ -168,7 +168,7 @@ def manual_extract():
             #chmod 755 new_path
             #os.makedirs(new_path)
             
-        os.chdir(new_path)
+        #os.chdir(new_path)
                
         # Save the pdf file with pdfplumber
         
@@ -181,7 +181,7 @@ def manual_extract():
             pdf_upload.seek(0)
             shutil.copyfileobj(pdf_upload, pdf_file)
                         
-        #extract_xlsx()
+        extract_xlsx(new_path)
 
         st.spinner()
         with st.spinner(text="In Progress"):
