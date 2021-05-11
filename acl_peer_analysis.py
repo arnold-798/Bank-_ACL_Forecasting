@@ -160,6 +160,8 @@ def manual_extract():
         
         path_exists_ind = os.path.exists(new_path)
         
+        st.write(path_exists_ind)
+        
         if path_exists_ind == 'True':
             st.write(os.listdir(new_path))
         elif path_exists_ind == 'False': 
