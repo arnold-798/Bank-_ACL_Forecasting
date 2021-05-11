@@ -162,15 +162,10 @@ def manual_extract():
         
         st.write(path_exists_ind)
         
-        if path_exists_ind == 'False': 
-            os.mkdirs(new_path)
-            st.write("The path does not exist, make the new path and change to working directory: ", os.listdir(new_path))
-        elif path_exists_ind == 'True':
-            st.write("The path exists, change to working directory", os.listdir(new_path))
-            
-        
-        os.chdir(new_path)
-        
+        if not os.path.exists('my_folder'):
+            os.makedirs(new_path)
+            os.chdir(new_path)
+               
         # Save the pdf file with pdfplumber
         
         #with pdfplumber.open(pdf_upload) as pdf_file:
