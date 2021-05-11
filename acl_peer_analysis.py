@@ -181,7 +181,7 @@ def manual_extract():
 
         st.spinner()
         with st.spinner(text="In Progress"):
-            time.sleep(300)
+            #time.sleep(300)
             st.success("Done - Double check the xlsx output to the PDF before finalizing any data as 'FTP'")
            
     
@@ -190,7 +190,8 @@ def manual_extract():
     start_button_v2 = st.button("Check", key = "Check")
     
     if start_button_v2:
-        quick_check = os.listdir(er_file_path)
+        file_path = os.getcwd()
+        quick_check = os.listdir(file_path)
         st.write(quick_check)
 
 #os.chdir('/Users/chrisarnold/Desktop/Big_Data_Econometrics/PyEnvs/peer_bank/2021_Q1/WFC')
