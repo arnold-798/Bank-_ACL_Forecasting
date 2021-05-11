@@ -163,7 +163,7 @@ def manual_extract():
         st.write(path_exists_ind)
         
         if path_exists_ind == 'False': 
-            os.mkdir(new_path)
+            os.mkdirs(new_path)
             st.write("The path does not exist, make the new path and change to working directory: ", os.listdir(new_path))
         elif path_exists_ind == 'True':
             st.write("The path exists, change to working directory", os.listdir(new_path))
