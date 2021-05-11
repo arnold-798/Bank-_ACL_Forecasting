@@ -156,7 +156,9 @@ def manual_extract():
         
         # Export zip files to a new folder 
     
-        new_path = os.path.join(er_file_path, year_quarter)
+        #new_path = os.path.join(er_file_path, year_quarter)
+        
+        new_path = er_file_path
         
         path_exists_ind = os.path.exists(new_path)
         
