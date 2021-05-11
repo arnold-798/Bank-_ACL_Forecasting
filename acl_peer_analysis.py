@@ -160,9 +160,10 @@ def manual_extract():
         
         path_exists_ind = os.path.exists(new_path)
         
-        st.write(path_exists_ind)
+        st.write(path_exists_ind, "Still working through permissions / access issues to create new folders for each Year_Quarter")
         
         if not os.path.exists('my_folder'):
+            #chmod 755 new_path
             os.makedirs(new_path)
             os.chdir(new_path)
                
