@@ -169,7 +169,9 @@ def manual_extract():
             #os.makedirs(new_path)
             
         #os.chdir(new_path)
-               
+        
+        st.write(os.getcwd())
+        
         # Save the pdf file with pdfplumber
         
         #with pdfplumber.open(pdf_upload) as pdf_file:
