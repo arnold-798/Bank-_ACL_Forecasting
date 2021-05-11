@@ -140,11 +140,6 @@ def manual_extract():
     if pdf_upload is not None: 
         file_details = {"FileName":pdf_upload.name,"FileType":pdf_upload.type,"FileSize":pdf_upload.size}
         st.write(file_details)
-    
-    def read_pdf_with_pdfplumber(file): 	
-        with pdfplumber.open(file) as pdf: 
-            page = pdf.pages[0] 
-            return page.extract_text()
         
      
     er_file_path = st.text_input(label="Paste the file path to a 'working directory' where you want to save the files to", 
