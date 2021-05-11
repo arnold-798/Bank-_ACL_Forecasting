@@ -28,7 +28,6 @@ import subprocess
 import camelot
 from PyPDF2 import PdfFileReader
 from camelot.core import TableList
-import pdfplumber
 import datetime as dt
 import time
 import requests
