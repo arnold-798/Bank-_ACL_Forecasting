@@ -121,7 +121,6 @@ pyparsing==2.4.7
 PyPDF2==1.26.0
 PyPDF4==1.27.0
 PyPrind==2.11.2
-pyproj==3.0.1
 PyQt5==5.12.3
 PyQt5-sip==12.8.1
 PyQtWebEngine==5.12.1
