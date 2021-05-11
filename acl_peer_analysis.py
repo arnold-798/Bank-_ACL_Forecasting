@@ -161,10 +161,12 @@ def manual_extract():
         path_exists_ind = os.path.exists(new_path)
         
         if path_exists_ind == 'True':
-            os.chdir(new_path)
+            st.write(os.listdir(new_path))
         elif path_exists_ind == 'False': 
             os.mkdir(new_path)
-            os.chdir(new_path)
+            st.write(os.listdir(new_path))
+        
+        os.chdir(new_path)
         
         # Save the pdf file with pdfplumber
         
@@ -181,7 +183,7 @@ def manual_extract():
 
         st.spinner()
         with st.spinner(text="In Progress"):
-            #time.sleep(300)
+            time.sleep(300)
             st.success("Done - Double check the xlsx output to the PDF before finalizing any data as 'FTP'")
            
     
@@ -190,8 +192,7 @@ def manual_extract():
     start_button_v2 = st.button("Check", key = "Check")
     
     if start_button_v2:
-        file_path = os.getcwd()
-        quick_check = os.listdir(file_path)
+        quick_check = os.listdir(new_path)
         st.write(quick_check)
 
 #os.chdir('/Users/chrisarnold/Desktop/Big_Data_Econometrics/PyEnvs/peer_bank/2021_Q1/WFC')
