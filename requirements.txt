@@ -6,6 +6,7 @@ GitPython==3.1.14
 graphviz==0.16
 matplotlib==3.3.4
 numpy==1.20.0
+opencv-python==4.5.1.48
 pandas==1.2.1
 pdfminer.six==20201018
 plotly==4.14.3
