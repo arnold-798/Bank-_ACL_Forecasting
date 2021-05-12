@@ -26,13 +26,16 @@ import numpy as np
 
 import subprocess
 import camelot
+from PyPDF2 import PdfFileWriter
 from PyPDF2 import PdfFileReader
 from camelot.core import TableList
 import datetime as dt
 import time
 import requests
 import shutil
-from io import StringIO
+from io import BytesIO
+import io
+from pathlib import Path
 
 
 #%% Create a title
@@ -81,24 +84,13 @@ def instructions():
             "forecasting with linear and ARIMA models")
     st.write("The tool also has a tool to download earnings releases pdfs into excel - this is stil" + 
              "in test format so please provide feeedback if it is not working properly")
-    
-#%% Create data summary and exploration tool
 
-def data_exploration():
-    st.header("Explore the Peer Bank and Macroeconomic Data")
-    
-    st.subheader("Peer Bank Data Analysis")
-
-    
-    
-    st.subheader("Macroeconomic Data and Trend - Fred QD Database")
-    
 #%% Individual Bank Earnings Release PDF to Excel Download
 
 def manual_extract():
     
     st.header("Earnings Release PDF to Excel")
-    st.write("This tool works best with specific formatting - i.e. banks with full page" + 
+    st.write("This tool works best with specific formatting - i.e. banks with full page " + 
              "financial statement tables produce better more defined results")
     
     # Test out direct links to the internet pdf path
@@ -139,6 +131,9 @@ def manual_extract():
     if pdf_upload is not None: 
         file_details = {"FileName":pdf_upload.name,"FileType":pdf_upload.type,"FileSize":pdf_upload.size}
         st.write(file_details)
+        st.write(type(pdf_upload))
+        #pdf_mem = PdfFileReader(pdf_upload)
+        #st.write(dir(pdf_upload))
         
      
     er_file_path = st.text_input(label="Paste the file path to a 'working directory' where you want to save the files to", 
@@ -150,39 +145,48 @@ def manual_extract():
     
     year_quarter = st.text_input(label="What year and quarter is it?", help="Recomended Format: YYYYQQ")
        
+    
     start_button = st.button("Run", key = "Run")
     
     if start_button: 
         
         # Export zip files to a new folder 
     
-        #new_path = os.path.join(er_file_path, year_quarter)
-        
-        new_path = er_file_path
+        new_path = os.path.join(er_file_path, year_quarter)
         
         path_exists_ind = os.path.exists(new_path)
         
+        def change_permissions_recursive(path, mode):
+            for root, dirs, files in os.walk(path, topdown=False):
+                for dir in [os.path.join(root,d) for d in dirs]:
+                    os.chmod(dir, mode)
+            for file in [os.path.join(root, f) for f in files]:
+                    os.chmod(file, mode)
+                    
+        change_permissions_recursive(new_path, 0o777)
+        
         st.write(path_exists_ind, "Still working through permissions / access issues to create new folders for each Year_Quarter")
         
+        # Need to figure out how to make a new directory from streamlit
+        
         #if not os.path.exists('my_folder'):
-            #chmod 755 new_path
+            #os.chmod()
             #os.makedirs(new_path)
             
-        #os.chdir(new_path)
+        os.chdir(new_path)
         
-        st.write(os.getcwd())
+        #pdf_writer = PdfFileWriter()
         
-        # Save the pdf file with pdfplumber
+        #with Path().open(mode="wb") as output_file: 
+        #    pdf_writer.write(output_file) 
         
-        #with pdfplumber.open(pdf_upload) as pdf_file:
-        #    pdf_file.write(pdf_file)
+        def save_uploadedfile(uploadedfile):
+            with open(os.path.join(new_path,uploadedfile.name),"wb") as f:
+                f.write(uploadedfile.getbuffer())
+                return st.success(("Saved File:{} " + new_path).format(uploadedfile.name))
         
-        # Test out pdfplumber as a duplicate option for extracting pdf tables
+        save_uploadedfile(pdf_upload)
         
-        with open(pdf_upload.name, "wb") as pdf_file:
-            pdf_upload.seek(0)
-            shutil.copyfileobj(pdf_upload, pdf_file)
-                        
         extract_xlsx(new_path)
 
         st.spinner()
@@ -196,13 +200,16 @@ def manual_extract():
     start_button_v2 = st.button("Check", key = "Check")
     
     if start_button_v2:
-        quick_check = os.listdir(new_path)
-        st.write(quick_check)
+        st.text("There should be 3 files in the working directory for each earnings release downloaded; pdf, zipfile, xlsx")
+        st.write(os.listdir())
+        
+    st.subheader("Next Steps: ")
+    st.text("Incorporate an append function to the existing dataset with the existing historical")
+    st.text("dataset in order to perform analysis with most up to date data")
+    
+    st.text("Potentially a specific ACL report? Provision, Coverage Rate, ACL % Change, NCO Rates")
+    st.text("Other ideas???")
 
-#os.chdir('/Users/chrisarnold/Desktop/Big_Data_Econometrics/PyEnvs/peer_bank/2021_Q1/WFC')
-#wfc_pages = total_pages('WFC2021_Q1.pdf')
-#print(wfc_pages)
-#extract_xlsx()
 
 #%% Peer Analysis Standard Visuals & Tables
 
@@ -251,7 +258,8 @@ def peer_visuals():
     
     peer_compare_data = pd.concat([peer_group, bank_data])
            
-    agg_peer = peer_compare_data.groupby('BANK_TYPE').agg('sum')[['NCO_TO_AVG_LOAN_CU', 'TOTAL_LOAN_LEASES_EXCL_HFS', 'TOTAL_RESV', 'PROV_FOR_LOAN_LEASE_LOSS', 'LN_AND_LS_HFI_AMORT_COST_RE_CONST_LOAN',
+    agg_peer = peer_compare_data.groupby('BANK_TYPE').agg('sum')[['NCO_TO_AVG_LOAN_CU', 'TOTAL_LOAN_LEASES_EXCL_HFS', 'TOTAL_RESV', 'PROV_FOR_LOAN_LEASE_LOSS', 
+                                                                  'LN_AND_LS_HFI_AMORT_COST_RE_CONST_LOAN',
                                                                   'LN_AND_LS_HFI_AMORT_COST_COM_RE_LOAN',
                                                                   'LN_AND_LS_HFI_AMORT_COST_RES_RE_LOAN',
                                                                   'LN_AND_LS_HFI_AMORT_COST_COM_LOAN',
@@ -264,7 +272,8 @@ def peer_visuals():
                                                                   'LN_AND_LS_HFI_ALLOWANCE_COM_LOAN',
                                                                   'LN_AND_LS_HFI_ALLOWANCE_CREDIT_CARD',
                                                                   'LN_AND_LS_HFI_ALLOWANCE_OTHER_CONSUMER_LOAN',
-                                                                  'LN_AND_LS_HFI_ALLOWANCE_UNALLOCATED', 'LN_AND_LS_HFI_ALLOWANCE_TOTAL']]
+                                                                  'LN_AND_LS_HFI_ALLOWANCE_UNALLOCATED', 
+                                                                  'LN_AND_LS_HFI_ALLOWANCE_TOTAL']]
     
     #agg_peer = pd.concat([agg_peer, bank_data], axis = 0)
 
@@ -355,18 +364,33 @@ def peer_visuals():
     
     ### Upload individual table or picture?
     
-    # Provision / NCO Stacked Bar Chart - Possible with Streamlit?
+    # Provision / NCO Stacked Bar Chart 
+    
+    peer_bankv1 = peer_bank_raw[['']]
+    
+    bank_datav1 = peer_bank_raw[['YEAR_QUARTER', 'PROV_FOR_LOAN_LEASE_LOSS', ]]
     
     ## Select Quarter
     
     
     # Subset the dataframe to only the selected year
     
-    current_bank_data_v1 = peer_bank_raw[peer_bank_raw['YEAR_QUARTER'] == curr_year_quarter]
+    peer_compare_data 
     
     
-            
-    reserve_build_release = alt.Chart()
+    alt.Chart(source).mark_bar().encode(
+    x='sum(yield)',
+    y='variety',
+    color='site',
+    order=alt.Order(
+      # Sort the segments of the bars by this field
+      'site',
+      sort='ascending'
+    )
+    )
+    
+    reserve_build_release = alt.Chart(current_bank_data_v1).mark_bar().encode(
+        x = )
     
     st.altair_chart(reserve_build_release)
     
@@ -377,6 +401,15 @@ def peer_visuals():
     
     st.write()
 
+#%% Create data summary and exploration tool
+
+def data_exploration():
+    st.header("Explore the Peer Bank and Macroeconomic Data")
+    
+    st.subheader("Peer Bank Data Analysis")
+    
+    st.subheader("Macroeconomic Data and Trend - Fred QD Database")
+    
 
 #%% Create the coverage rate analysis page
 
