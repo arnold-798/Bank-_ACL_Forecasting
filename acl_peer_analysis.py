@@ -54,17 +54,17 @@ st.title("""
 github_path = 'https://raw.githubusercontent.com/arnold-798/Bank-_ACL_Forecasting/main/'
 
 @st.cache
-def load_peer_data(nrows):
+def load_peer_data():
     data_path = os.path.join(github_path, 'panel_bank_data_042021.csv')
     data_path = data_path.replace('\\', '/')
-    data = pd.read_csv(data_path, sep = ',', nrows=nrows, error_bad_lines=False)
+    data = pd.read_csv(data_path, sep = ',', error_bad_lines=False)
     return data
 
 @st.cache
-def load_fredqd(nrows):
+def load_fredqd():
     data_path = os.path.join(github_path, 'fred_qd_042021.csv') 
     data_path = data_path.replace('\\', '/')
-    data = pd.read_csv(data_path, sep = ',', skiprows=[i for i in range(1,131)], nrows=nrows, error_bad_lines=False) 
+    data = pd.read_csv(data_path, sep = ',', skiprows=[i for i in range(1,131)], error_bad_lines=False) 
     return data
 
 peer_path = os.path.join(github_path, 'panel_bank_data_042021.csv')
@@ -145,7 +145,6 @@ def manual_extract():
     
     year_quarter = st.text_input(label="What year and quarter is it?", help="Recomended Format: YYYYQQ")
        
-    
     start_button = st.button("Run", key = "Run")
     
     if start_button: 
@@ -211,13 +210,20 @@ def manual_extract():
     st.text("Other ideas???")
 
 
+
 #%% Peer Analysis Standard Visuals & Tables
 
 def peer_visuals():
     st.header("Peer Analysis Standard Deck Visuals")
     
-    fred_qd_raw = load_fredqd(120) 
-    peer_bank_raw = load_peer_data(2400)
+    fred_qd_raw = load_fredqd() 
+    peer_bank_raw = load_peer_data()
+    
+    # Create total NCOs variable from recoveries and charge offs fields
+    
+    bank_raw = peer_bank_raw.copy()
+    
+    bank_raw = bank_raw.assign(TOTAL_NCO_AMT = bank_raw['LLR_TOTAL_CHRG_OFF_BHC'] - bank_raw['TOTAL_LOAN_LEASES_RECOV'])
         
     # Select Quarter
     
@@ -231,11 +237,13 @@ def peer_visuals():
     
     # Subset the dataframe to only the selected year
     
-    current_bank_data = peer_bank_raw[peer_bank_raw['YEAR_QUARTER'] == curr_year_quarter]
+    current_bank_data = bank_raw[bank_raw['YEAR_QUARTER'] == curr_year_quarter]
+    
+    st.write("Current_bank_data:", current_bank_data)
     
     # Select Bank
     
-    bank_list = peer_bank_raw['BANK_NAME_ABBR'].values
+    bank_list = bank_raw['BANK_NAME_ABBR'].values
     
     def unique(list1):
         x = np.array(list1)
@@ -251,13 +259,15 @@ def peer_visuals():
     st.subheader("Coverage Rate Waterfall - Current Quarter")
           
     peer_group = current_bank_data[current_bank_data['BANK_NAME_ABBR'] != bank_name]
+    
+    st.write("peer_group:", peer_group)
 
     new_bank_type = bank_name
     
     bank_data['BANK_TYPE'] = bank_data['BANK_TYPE'].replace(['Peer'], new_bank_type)
     
     peer_compare_data = pd.concat([peer_group, bank_data])
-           
+               
     agg_peer = peer_compare_data.groupby('BANK_TYPE').agg('sum')[['NCO_TO_AVG_LOAN_CU', 'TOTAL_LOAN_LEASES_EXCL_HFS', 'TOTAL_RESV', 'PROV_FOR_LOAN_LEASE_LOSS', 
                                                                   'LN_AND_LS_HFI_AMORT_COST_RE_CONST_LOAN',
                                                                   'LN_AND_LS_HFI_AMORT_COST_COM_RE_LOAN',
@@ -281,64 +291,70 @@ def peer_visuals():
 
     st.subheader("Peer Coverage Rates Across FRB Y9-C Defined Products")
     
+    st.write("agg_peer:", agg_peer)
+    
     agg_peer_pct = agg_peer
     agg_peer_num = agg_peer
     
     agg_peer_pct = agg_peer_pct.assign(Construction_RE_Coverage_Rate = agg_peer_pct['LN_AND_LS_HFI_ALLOWANCE_RE_CONST_LOAN'] / agg_peer_pct['LN_AND_LS_HFI_AMORT_COST_RE_CONST_LOAN'])
-    agg_peer_num = agg_peer_num.assign(Construction_RE_Coverage_Rate = agg_peer_num['LN_AND_LS_HFI_ALLOWANCE_RE_CONST_LOAN'] / agg_peer_num['LN_AND_LS_HFI_AMORT_COST_RE_CONST_LOAN'])
+    agg_peer_num = agg_peer_num.assign(Construction_RE_Coverage_Rate = (agg_peer_num['LN_AND_LS_HFI_ALLOWANCE_RE_CONST_LOAN'] / agg_peer_num['LN_AND_LS_HFI_AMORT_COST_RE_CONST_LOAN'])*100)
        
     agg_peer_pct['Construction_RE_Coverage_Rate'] = pd.Series([round(val, 6) for val in agg_peer_pct['Construction_RE_Coverage_Rate']], index = agg_peer_pct.index)
     agg_peer_pct['Construction_RE_Coverage_Rate'] = pd.Series(["{0:.2f}%".format(val * 100) for val in agg_peer_pct['Construction_RE_Coverage_Rate']], index = agg_peer_pct.index)    
     
     agg_peer_pct = agg_peer_pct.assign(Commercial_RE_Coverage_Rate = agg_peer_pct['LN_AND_LS_HFI_ALLOWANCE_COM_RE_LOAN'] / agg_peer_pct['LN_AND_LS_HFI_AMORT_COST_COM_RE_LOAN'])
-    agg_peer_num = agg_peer_num.assign(Commercial_RE_Coverage_Rate = agg_peer_num['LN_AND_LS_HFI_ALLOWANCE_COM_RE_LOAN'] / agg_peer_num['LN_AND_LS_HFI_AMORT_COST_COM_RE_LOAN'])
+    agg_peer_num = agg_peer_num.assign(Commercial_RE_Coverage_Rate = (agg_peer_num['LN_AND_LS_HFI_ALLOWANCE_COM_RE_LOAN'] / agg_peer_num['LN_AND_LS_HFI_AMORT_COST_COM_RE_LOAN'])*100)
 
     agg_peer_pct['Commercial_RE_Coverage_Rate'] = pd.Series([round(val, 6) for val in agg_peer_pct['Commercial_RE_Coverage_Rate']], index = agg_peer_pct.index)
     agg_peer_pct['Commercial_RE_Coverage_Rate'] = pd.Series(["{0:.2f}%".format(val * 100) for val in agg_peer_pct['Commercial_RE_Coverage_Rate']], index = agg_peer_pct.index)    
 
     agg_peer_pct = agg_peer_pct.assign(Residential_RE_Coverage_Rate = agg_peer_pct['LN_AND_LS_HFI_ALLOWANCE_RES_RE_LOAN'] / agg_peer_pct['LN_AND_LS_HFI_AMORT_COST_RES_RE_LOAN'])
-    agg_peer_num = agg_peer_num.assign(Residential_RE_Coverage_Rate = agg_peer_num['LN_AND_LS_HFI_ALLOWANCE_RES_RE_LOAN'] / agg_peer_num['LN_AND_LS_HFI_AMORT_COST_RES_RE_LOAN'])
+    agg_peer_num = agg_peer_num.assign(Residential_RE_Coverage_Rate = (agg_peer_num['LN_AND_LS_HFI_ALLOWANCE_RES_RE_LOAN'] / agg_peer_num['LN_AND_LS_HFI_AMORT_COST_RES_RE_LOAN'])*100)
     
     agg_peer_pct['Residential_RE_Coverage_Rate'] = pd.Series([round(val, 6) for val in agg_peer_pct['Residential_RE_Coverage_Rate']], index = agg_peer_pct.index)
     agg_peer_pct['Residential_RE_Coverage_Rate'] = pd.Series(["{0:.2f}%".format(val * 100) for val in agg_peer_pct['Residential_RE_Coverage_Rate']], index = agg_peer_pct.index)    
    
     agg_peer_pct = agg_peer_pct.assign(Commercial_Coverage_Rate = agg_peer_pct['LN_AND_LS_HFI_ALLOWANCE_COM_LOAN'] / agg_peer_pct['LN_AND_LS_HFI_AMORT_COST_COM_LOAN'])
-    agg_peer_num = agg_peer_num.assign(Commercial_Coverage_Rate = agg_peer_num['LN_AND_LS_HFI_ALLOWANCE_COM_LOAN'] / agg_peer_num['LN_AND_LS_HFI_AMORT_COST_COM_LOAN'])
+    agg_peer_num = agg_peer_num.assign(Commercial_Coverage_Rate = (agg_peer_num['LN_AND_LS_HFI_ALLOWANCE_COM_LOAN'] / agg_peer_num['LN_AND_LS_HFI_AMORT_COST_COM_LOAN'])*100)
     
     agg_peer_pct['Commercial_Coverage_Rate'] = pd.Series([round(val, 6) for val in agg_peer_pct['Commercial_Coverage_Rate']], index = agg_peer_pct.index)
     agg_peer_pct['Commercial_Coverage_Rate'] = pd.Series(["{0:.2f}%".format(val * 100) for val in agg_peer_pct['Commercial_Coverage_Rate']], index = agg_peer_pct.index)    
 
     agg_peer_pct = agg_peer_pct.assign(Credit_Card_Coverage_Rate = agg_peer_pct['LN_AND_LS_HFI_ALLOWANCE_CREDIT_CARD'] / agg_peer_pct['LN_AND_LS_HFI_AMORT_COST_CREDIT_CARD'])
-    agg_peer_num = agg_peer_num.assign(Credit_Card_Coverage_Rate = agg_peer_num['LN_AND_LS_HFI_ALLOWANCE_CREDIT_CARD'] / agg_peer_num['LN_AND_LS_HFI_AMORT_COST_CREDIT_CARD'])
+    agg_peer_num = agg_peer_num.assign(Credit_Card_Coverage_Rate = (agg_peer_num['LN_AND_LS_HFI_ALLOWANCE_CREDIT_CARD'] / agg_peer_num['LN_AND_LS_HFI_AMORT_COST_CREDIT_CARD'])*100)
     
     agg_peer_pct['Credit_Card_Coverage_Rate'] = pd.Series([round(val, 6) for val in agg_peer_pct['Credit_Card_Coverage_Rate']], index = agg_peer_pct.index)
     agg_peer_pct['Credit_Card_Coverage_Rate'] = pd.Series(["{0:.2f}%".format(val * 100) for val in agg_peer_pct['Credit_Card_Coverage_Rate']], index = agg_peer_pct.index)    
 
     agg_peer_pct = agg_peer_pct.assign(Other_Consumer_Coverage_Rate = agg_peer_pct['LN_AND_LS_HFI_ALLOWANCE_OTHER_CONSUMER_LOAN'] / agg_peer_pct['LN_AND_LS_HFI_AMORT_COST_OTHER_CONSUMER_LOAN'])
-    agg_peer_num = agg_peer_num.assign(Other_Consumer_Coverage_Rate = agg_peer_num['LN_AND_LS_HFI_ALLOWANCE_OTHER_CONSUMER_LOAN'] / agg_peer_num['LN_AND_LS_HFI_AMORT_COST_OTHER_CONSUMER_LOAN'])
+    agg_peer_num = agg_peer_num.assign(Other_Consumer_Coverage_Rate = (agg_peer_num['LN_AND_LS_HFI_ALLOWANCE_OTHER_CONSUMER_LOAN'] / agg_peer_num['LN_AND_LS_HFI_AMORT_COST_OTHER_CONSUMER_LOAN'])*100)
 
     agg_peer_pct['Other_Consumer_Coverage_Rate'] = pd.Series([round(val, 6) for val in agg_peer_pct['Other_Consumer_Coverage_Rate']], index = agg_peer_pct.index)
     agg_peer_pct['Other_Consumer_Coverage_Rate'] = pd.Series(["{0:.2f}%".format(val * 100) for val in agg_peer_pct['Other_Consumer_Coverage_Rate']], index = agg_peer_pct.index)    
 
     agg_peer_pct = agg_peer_pct.assign(Total_ACL_Coverage_Rate = agg_peer_pct['LN_AND_LS_HFI_ALLOWANCE_TOTAL'] / agg_peer_pct['LN_AND_LS_HFI_AMORT_COST_TOTAL'])
-    agg_peer_num = agg_peer_num.assign(Total_ACL_Coverage_Rate = agg_peer_num['LN_AND_LS_HFI_ALLOWANCE_TOTAL'] / agg_peer_num['LN_AND_LS_HFI_AMORT_COST_TOTAL'])
+    agg_peer_num = agg_peer_num.assign(Total_ACL_Coverage_Rate = (agg_peer_num['LN_AND_LS_HFI_ALLOWANCE_TOTAL'] / agg_peer_num['LN_AND_LS_HFI_AMORT_COST_TOTAL'])*100)
 
     agg_peer_pct['Total_ACL_Coverage_Rate'] = pd.Series([round(val, 6) for val in agg_peer_pct['Total_ACL_Coverage_Rate']], index = agg_peer_pct.index)
-    agg_peer_pct['Total_ACL_Coverage_Rate'] = pd.Series(["{0:.2f}%".format(val * 100) for val in agg_peer_pct['Total_ACL_Coverage_Rate']], index = agg_peer_pct.index)    
+    agg_peer_pct['Total_ACL_Coverage_Rate'] = (pd.Series(["{0:.2f}%".format(val * 100) for val in agg_peer_pct['Total_ACL_Coverage_Rate']], index = agg_peer_pct.index)) 
 
     acl_coverage_rates_pct = agg_peer_pct[['Construction_RE_Coverage_Rate', 'Commercial_RE_Coverage_Rate', 
                                            'Residential_RE_Coverage_Rate', 'Commercial_Coverage_Rate', 'Credit_Card_Coverage_Rate', 'Other_Consumer_Coverage_Rate', 
                                            'Total_ACL_Coverage_Rate']]  
     
+    st.write("acl_coverage_Rates:", acl_coverage_rates_pct)
+    
     test1 = acl_coverage_rates_pct.transpose()
-    st.write(test1)
+    st.write("test1:", test1)
     
     acl_coverage_rates_num = agg_peer_num[['Construction_RE_Coverage_Rate', 'Commercial_RE_Coverage_Rate', 
-                                           'Residential_RE_Coverage_Rate', 'Commercial_Coverage_Rate', 'Credit_Card_Coverage_Rate', 'Other_Consumer_Coverage_Rate', 
+                                           'Residential_RE_Coverage_Rate', 'Commercial_Coverage_Rate', 
+                                           'Credit_Card_Coverage_Rate', 'Other_Consumer_Coverage_Rate', 
                                            'Total_ACL_Coverage_Rate']]
-    
-    test2 = acl_coverage_rates_num
         
+    test2 = acl_coverage_rates_num
+    
+    st.subheader("Peer Coverage Rate Ratios by FRY9C Products")
     st.bar_chart(test2)
     
     # Peer Portfolio Mix by FRB Y9-C Industry Code
@@ -360,39 +376,73 @@ def peer_visuals():
     
     # Peer Reserves Schedule - QoQ
     
+    # Loop to move each row / to caculate qoq changes or 
+    # Figure out how to declare the data panel data and differene the data 
+        
+    if quarter == 'Q1':
+        prior_quarter = 'Q4'
+    elif quarter == 'Q2':
+        prior_quarter = 'Q1'
+    elif quarter == 'Q3':
+        prior_quarter = 'Q2'
+    elif prior_quarter == 'Q4':
+        prior_quarter = 'Q3'
+        
+    prior_yearq = "".join([year, prior_quarter])
+        
+    st.write(prior_quarter)
+    
+    prior_peer_bank = bank_raw[bank_raw['YEAR_QUARTER']==prior_yearq]
+    
+    prior_peer_bank = prior_peer_bank.rename(columns={'PROV_FOR_LOAN_LEASE_LOSS':'PROV_FOR_LOAN_LEASE_LOSS_PRIORQ', 'TOTAL_NCO_AMT':'TOTAL_NCO_AMT_PRIORQ', 'TOTAL_RESV':'TOTAL_RESV_PRIORQ'})
+
+    st.write("Prior Peer Bank:", prior_peer_bank)
+      
+    peer_bankv1 = bank_raw[bank_raw['YEAR_QUARTER']==curr_year_quarter]
+        
+    peer_bankv2 = pd.merge(peer_bankv1, prior_peer_bank, on = ['Unique_ID'])
+    
+    st.write("peer_bankv2:", peer_bankv2)
+    
+    bank_datav3 = peer_bankv2[['YEAR_QUARTER', 'TOTAL_RESV', 'PROV_FOR_LOAN_LEASE_LOSS', 'TOTAL_NCO_AMT', 'TOTAL_RESV_PRIORQ', 'PROV_FOR_LOAN_LEASE_LOSS_PRIORQ', 'TOTAL_NCO_AMT_PRIORQ']]
+       
+    st.write("bank_datav3:", bank_datav3)
+    
     ## ACL Walk - Beg ACL, NCOs, Provision, Plug, Ending Balance
     
-    ### Upload individual table or picture?
+    current_walk_all = bank_datav3[['YEAR_QUARTER', 'TOTAL_RESV', 'PROV_FOR_LOAN_LEASE_LOSS', 'TOTAL_NCO_AMT', 'TOTAL_RESV_PRIORQ']]
     
-    # Provision / NCO Stacked Bar Chart 
+    current_walk = current_walk_all[current_walk_all['BANK_NAME_ABBR'] == bank_name]
     
-    peer_bankv1 = peer_bank_raw[['']]
-    
-    bank_datav1 = peer_bank_raw[['YEAR_QUARTER', 'PROV_FOR_LOAN_LEASE_LOSS', ]]
-    
-    ## Select Quarter
+    # alt.Chart(current_walk).mark_bar().encode(
+    #     x = [''])
+
     
     
-    # Subset the dataframe to only the selected year
+    # # Provision / NCO Stacked Bar Chart 
+
+    # current_q_prov_nco = bank_datav3[['YEAR_QUARTER', 'PROV_FOR_LOAN_LEASE_LOSS', 'TOTAL_NCO_AMT']]
+
+    # # Subset the dataframe to only the selected year
     
-    peer_compare_data 
+    # peer_compare_data 
     
     
-    alt.Chart(source).mark_bar().encode(
-    x='sum(yield)',
-    y='variety',
-    color='site',
-    order=alt.Order(
-      # Sort the segments of the bars by this field
-      'site',
-      sort='ascending'
-    )
-    )
+    # alt.Chart(source).mark_bar().encode(
+    # x='sum(yield)',
+    # y='variety',
+    # color='site',
+    # order=alt.Order(
+    #   # Sort the segments of the bars by this field
+    #   'site',
+    #   sort='ascending'
+    # )
+    # )
     
-    reserve_build_release = alt.Chart(current_bank_data_v1).mark_bar().encode(
-        x = )
+    # reserve_build_release = alt.Chart(current_bank_data_v1).mark_bar().encode(
+    #     x = ['', ''] )
     
-    st.altair_chart(reserve_build_release)
+    # st.altair_chart(reserve_build_release)
     
     # CECL Coverage Rate Index
     
@@ -564,13 +614,16 @@ def forecast_tool():
 
 def main():
     selected_box = st.sidebar.selectbox('Choose one of the following', 
-                                        ('Tutotrial and Instructions', 'PDF to Excel (Earnings Releases Download)', 'Standard Peer Deck Visuals','Data Exploration', 
+                                        ('Tutotrial and Instructions', 'PDF to Excel (Earnings Releases Download)', 'Standard Peer Deck Visuals', 'General Test',
+                                         'Data Exploration', 
                                          'Coverage Rate Analysis', 'Provision and Loss Rates Analysis',
                                          'Loan Balances', 'Loss Rates and NCO Analysis', 'Forecasting Analysis'))
     if selected_box == 'Tutotrial and Instructions': 
         instructions() 
     if selected_box == 'PDF to Excel (Earnings Releases Download)':
         manual_extract()
+    if selected_box == 'General Test':
+        gen_visuals()
     if selected_box == 'Standard Peer Deck Visuals':
         peer_visuals()
     if selected_box == 'Data Exploration': 
